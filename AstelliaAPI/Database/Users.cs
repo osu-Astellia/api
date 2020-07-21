@@ -57,7 +57,26 @@ namespace AstelliaAPI.Database
         [Required] public int level_taiko { get; set; }
         [Required] public int level_ctb { get; set; }
         [Required] public int level_mania { get; set; }
-        
+        [Required] public long ranked_score_std { get; set; }
+        [Required] public long ranked_score_taiko { get; set; }
+        [Required] public long ranked_score_ctb { get; set; }
+        [Required] public long ranked_score_mania { get; set; }
+        [Required] public long total_score_std { get; set; }
+        [Required] public long total_score_taiko { get; set; }
+        [Required] public long total_score_ctb { get; set; }
+        [Required] public long total_score_mania { get; set; }
+
+        [Required] public int total_hits_std { get; set; }
+        [Required] public int total_hits_taiko { get; set; }
+        [Required] public int total_hits_ctb { get; set; }
+        [Required] public int total_hits_mania { get; set; }
+
+
+        [Required] public int replays_watched_std { get; set; }
+        [Required] public int replays_watched_taiko { get; set; }
+        [Required] public int replays_watched_ctb { get; set; }
+        [Required] public int replays_watched_mania { get; set; }
+
         [Required] public int playcount_std { get; set; }
         [Required] public int playcount_taiko { get; set; }
         [Required] public int playcount_ctb { get; set; }
@@ -93,7 +112,25 @@ namespace AstelliaAPI.Database
         [Required] public int level_taiko { get; set; }
         [Required] public int level_ctb { get; set; }
         [Required] public int level_mania { get; set; }
-        
+        [Required] public long ranked_score_std { get; set; }
+        [Required] public long ranked_score_taiko { get; set; }
+        [Required] public long ranked_score_ctb { get; set; }
+        [Required] public long ranked_score_mania { get; set; }
+        [Required] public long total_score_std { get; set; }
+        [Required] public long total_score_taiko { get; set; }
+        [Required] public long total_score_ctb { get; set; }
+        [Required] public long total_score_mania { get; set; }
+
+        [Required] public int total_hits_std { get; set; }
+        [Required] public int total_hits_taiko { get; set; }
+        [Required] public int total_hits_ctb { get; set; }
+        [Required] public int total_hits_mania { get; set; }
+
+
+        [Required] public int replays_watched_std { get; set; }
+        [Required] public int replays_watched_taiko { get; set; }
+        [Required] public int replays_watched_ctb { get; set; }
+        [Required] public int replays_watched_mania { get; set; }
         [Required] public int playcount_std { get; set; }
         [Required] public int playcount_taiko { get; set; }
         [Required] public int playcount_ctb { get; set; }
@@ -155,7 +192,28 @@ namespace AstelliaAPI.Database
         [Required] public int level_taiko { get; set; }
         [Required] public int level_ctb { get; set; }
         [Required] public int level_mania { get; set; }
-        
+
+
+        [Required] public long ranked_score_std { get; set; }
+        [Required] public long ranked_score_taiko { get; set; }
+        [Required] public long ranked_score_ctb { get; set; }
+        [Required] public long ranked_score_mania { get; set; }
+        [Required] public long total_score_std { get; set; }
+        [Required] public long total_score_taiko { get; set; }
+        [Required] public long total_score_ctb { get; set; }
+        [Required] public long total_score_mania { get; set; }
+
+        [Required] public int total_hits_std { get; set; }
+        [Required] public int total_hits_taiko { get; set; }
+        [Required] public int total_hits_ctb { get; set; }
+        [Required] public int total_hits_mania { get; set; }
+
+
+        [Required] public int replays_watched_std { get; set; }
+        [Required] public int replays_watched_taiko { get; set; }
+        [Required] public int replays_watched_ctb { get; set; }
+        [Required] public int replays_watched_mania { get; set; }
+
         [Required] public int playcount_std { get; set; }
         [Required] public int playcount_taiko { get; set; }
         [Required] public int playcount_ctb { get; set; }

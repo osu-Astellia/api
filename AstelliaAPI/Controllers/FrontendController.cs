@@ -84,7 +84,24 @@ namespace AstelliaAPI.Controllers
         public string icon { get; set; }
         public string title { get; set; }
     }
-
+    public class ProfileResponse
+    {
+        public int id { get; set; }
+        public string username { get; set; }
+        public int place { get; set; }
+        public int level { get; set; }
+        public int playcount { get; set; }
+        public int pp { get; set; }
+        public string country { get; set; }
+        public int ss_ranks { get; set; }
+        public int s_ranks { get; set; }
+        public int a_ranks { get; set; }
+        public int replays_watched { get; set; }
+        public long ranked_score { get; set; }
+        public long total_score { get; set; }
+        public int total_hits { get; set; }
+        public float accuracy { get; set; }
+    }
     public class PPGraph
     {
         public int user { get; set; }
@@ -168,7 +185,7 @@ namespace AstelliaAPI.Controllers
 
             if ((user.privileges & RipplePrivileges.AdminManageUsers) <= 0)
                 return ContentHelper.GenerateOk("No, sowwy, that's my pwace ~ c OwO c ~");
-            
+
             UserManager.SendPacket(userId, packetName, packetArgs);
             return ContentHelper.GenerateOk("Sent!");
 
@@ -305,21 +322,21 @@ namespace AstelliaAPI.Controllers
         {
             var user = await factory.Get().Users
                 .FirstOrDefaultAsync(x => userRegisterInfo.login.ToLower().Replace(" ", "_") == x.username_safe);
-            
+
             if (!(user is null)) return ContentHelper.GenerateError("User with this login already exist.");
-            
+
             if (userRegisterInfo.password.Length < 4 || userRegisterInfo.password.Length > 25)
                 return ContentHelper.GenerateError("Password too long or too short.");
-            
+
             if (userRegisterInfo.login.Length < 3 || userRegisterInfo.login.Length > 16)
                 return ContentHelper.GenerateError("Username too long or too short.");
-            
+
             var emailCheck = await factory.Get().Users.FirstOrDefaultAsync(x => x.email == userRegisterInfo.email);
             if (!(emailCheck is null)) return ContentHelper.GenerateError("User with that email already exist.");
-            
+
             if (!await VerifyCaptcha(userRegisterInfo.captcha_key, userRegisterInfo.ip))
                 return ContentHelper.GenerateError("Captcha is not verified.");
-            
+
             string password;
             byte[] salt = null;
 
@@ -388,7 +405,7 @@ namespace AstelliaAPI.Controllers
             {
                 id = user.id,
                 username = user.username,
-                privileges = (int) user.privileges,
+                privileges = (int)user.privileges,
                 banned = UserManager.Allowed(user.id),
                 restricted = UserManager.Restricted(user.id)
             };
@@ -405,7 +422,7 @@ namespace AstelliaAPI.Controllers
                 nc_instead_dt = user.nc_instead_dt
             };
 
-            var meAndStats = JsonConvert.SerializeObject(new object[] {meResponse, userStats});
+            var meAndStats = JsonConvert.SerializeObject(new object[] { meResponse, userStats });
 
             return Content(meAndStats);
         }
@@ -422,13 +439,13 @@ namespace AstelliaAPI.Controllers
 
             if (user.password_version > 2)
                 return ContentHelper.GenerateError("Account is already on newest password algorithm");
-            
+
             byte[] salt = null;
             var validPassword =
                 BCrypt.Net.BCrypt.Verify(MD5Helper.GetMd5(passwordMergeRequest.password), user.password_md5);
 
             if (!validPassword) return ContentHelper.GenerateError("Invalid password.");
-            
+
             string password;
             (password, salt) = PasswordHelper.GeneratePassword(passwordMergeRequest.password);
 
@@ -490,7 +507,60 @@ namespace AstelliaAPI.Controllers
             Response.ContentType = "application/json";
             return Content(JsonConvert.SerializeObject(leaderboard));
         }
+        [HttpGet("profile_info")]
+        public async Task<IActionResult> ProfileInfo([FromQuery(Name = "u")] int user, [FromQuery(Name = "m")] int mode, [FromQuery(Name = "r")] bool isRelax)
+        {
+            IEnumerable<ProfileResponse> profile = null;
+            if (isRelax)
+                profile = factory.Get()
+                    .RelaxStats
+                    .ToList()
+                    .Where(x => x.id == user)
+                    .Select(x => new ProfileResponse
+                    {
+                        id = x.id,
+                        username = x.username,
+                        place = GetRank(x, mode, isRelax),
+                        accuracy = GetAccuracy(x, mode),
+                        country = x.country,
+                        ss_ranks = 0,
+                        s_ranks = 0,
+                        a_ranks = 0,
+                        pp = GetPP(x, mode),
+                        playcount = GetPlaycount(x, mode),
+                        level = GetLevel(x, mode),
+                        replays_watched = GetReplaysWatched(x, mode),
+                        ranked_score = GetRankedScore(x, mode),
+                        total_score = GetTotalScore(x, mode),
+                        total_hits = GetTotalHits(x, mode)
+                    });
+            else
+                profile = factory.Get()
+                    .UsersStats
+                    .ToList()
+                    .Where(x => x.id == user)
+                    .Select(x => new ProfileResponse
+                    {
+                        id = x.id,
+                        username = x.username,
+                        place = GetRank(x, mode, isRelax),
+                        accuracy = GetAccuracy(x, mode),
+                        country = x.country,
+                        ss_ranks = 0,
+                        s_ranks = 0,
+                        a_ranks = 0,
+                        pp = GetPP(x, mode),
+                        playcount = GetPlaycount(x, mode),
+                        level = GetLevel(x, mode),
+                        replays_watched = GetReplaysWatched(x, mode),
+                        ranked_score = GetRankedScore(x, mode),
+                        total_score = GetTotalScore(x, mode),
+                        total_hits = GetTotalHits(x, mode)
+                    });
 
+            Response.ContentType = "application/json";
+            return Content(JsonConvert.SerializeObject(profile));
+        }
         public async Task<bool> CheckToken()
         {
             string token = Request.Headers["Authorization"];
@@ -539,7 +609,50 @@ namespace AstelliaAPI.Controllers
                 _ => 0
             };
         }
-        
+
+        public int GetRank(IStats stats, int mode, bool isRelax)
+        {
+            if (isRelax) 
+            {
+                var rankObject = factory.Get()
+                .RelaxStats
+                .ToList()
+                .OrderByDescending(x => GetPP(x, mode))
+                .GroupBy(x => GetPP(x, mode))
+                .Select((group, i) => new
+                {
+                    Rank = i + 1,
+                    Players = group.OrderByDescending(x => GetPP(x, mode))
+                });
+                foreach (var single in rankObject)
+                {
+                    var player = single.Players.FirstOrDefault(x => x.username == stats.username);
+                    if (!(player is null))
+                        return single.Rank;
+                }
+            }
+            else
+            {
+                var rankObject = factory.Get()
+                .UsersStats
+                .ToList()
+                .OrderByDescending(x => GetPP(x, mode))
+                .GroupBy(x => GetPP(x, mode))
+                .Select((group, i) => new
+                {
+                    Rank = i + 1,
+                    Players = group.OrderByDescending(x => GetPP(x, mode))
+                });
+                foreach (var single in rankObject)
+                {
+                    var player = single.Players.FirstOrDefault(x => x.username == stats.username);
+                    if (!(player is null))
+                        return single.Rank;
+                }
+            }
+            return 0; 
+        }
+
         public int GetLevel(IStats stats, int mode)
         {
             return mode switch
@@ -560,6 +673,50 @@ namespace AstelliaAPI.Controllers
                 1 => stats.playcount_taiko,
                 2 => stats.playcount_ctb,
                 3 => stats.playcount_mania,
+                _ => 0
+            };
+        }
+        public int GetTotalHits(IStats stats, int mode)
+        {
+            return mode switch
+            {
+                0 => stats.total_hits_std,
+                1 => stats.total_hits_taiko,
+                2 => stats.total_hits_ctb,
+                3 => stats.total_hits_mania,
+                _ => 0
+            };
+        }
+        public long GetTotalScore(IStats stats, int mode)
+        {
+            return mode switch
+            {
+                0 => stats.total_score_std,
+                1 => stats.total_score_taiko,
+                2 => stats.total_score_ctb,
+                3 => stats.total_score_mania,
+                _ => 0
+            };
+        }
+        public long GetRankedScore(IStats stats, int mode)
+        {
+            return mode switch
+            {
+                0 => stats.ranked_score_std,
+                1 => stats.ranked_score_taiko,
+                2 => stats.ranked_score_ctb,
+                3 => stats.ranked_score_mania,
+                _ => 0
+            };
+        }
+        public int GetReplaysWatched(IStats stats, int mode)
+        {
+            return mode switch
+            {
+                0 => stats.replays_watched_std,
+                1 => stats.replays_watched_taiko,
+                2 => stats.replays_watched_ctb,
+                3 => stats.replays_watched_mania,
                 _ => 0
             };
         }

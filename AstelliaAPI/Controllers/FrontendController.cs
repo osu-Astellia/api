@@ -33,7 +33,6 @@ namespace AstelliaAPI.Controllers
     {
         public string content { get; set; }
     }
-
     public class UserRegister
     {
         public string login { get; set; }
@@ -84,6 +83,7 @@ namespace AstelliaAPI.Controllers
         public string icon { get; set; }
         public string title { get; set; }
     }
+
     public class ProfileResponse
     {
         public int id { get; set; }
@@ -102,6 +102,26 @@ namespace AstelliaAPI.Controllers
         public int total_hits { get; set; }
         public float accuracy { get; set; }
     }
+
+    public class ProfileScore
+    {
+        public int beatmap_id { get; set; }
+        public int mods { get; set; }
+        public float accuracy { get; set; }
+        public string beatmap_title { get; set; }
+        public string difficulty { get; set; }
+        public string timestamp { get; set; }
+        public int pp { get; set; }
+    }
+
+    public class ProfileBeatmap 
+    {
+        public int BeatmapId;
+        public int BeatmapSetId;
+        public string SongTitle;
+        public string Difficulty;
+    }
+
     public class PPGraph
     {
         public int user { get; set; }
@@ -145,7 +165,6 @@ namespace AstelliaAPI.Controllers
         public int user_id { get; set; }
     }
 
-
     [ApiController]
     [Route("/frontend/api/v1/")]
     [RequestFormLimits(ValueLengthLimit = 1024 * 1024 * 8, ValueCountLimit = 1024 * 1024 * 8)]
@@ -159,6 +178,7 @@ namespace AstelliaAPI.Controllers
             string token = Request.Headers["Authorization"];
             if (!await CheckToken()) return ContentHelper.GenerateError("Token not found");
             var dbToken = await factory.Get().Tokens.Where(x => x.token == token).FirstOrDefaultAsync();
+            
             using var factoryWrite = factory.GetForWrite();
             var stats = await factoryWrite.Context.UsersStats.Where(x => x.id.ToString() == dbToken.user)
                 .FirstOrDefaultAsync();
@@ -199,8 +219,10 @@ namespace AstelliaAPI.Controllers
             var dbToken = await factory.Get().Tokens.Where(x => x.token == token).FirstOrDefaultAsync();
             var avatar = Request.Form.Files.GetFile("File");
             if (avatar is null) ContentHelper.GenerateError("File is invalid.");
+
             if (!Regex.IsMatch(avatar.FileName, @"([^\s]+(\.(?i)(jpg|png|jpeg))$)"))
                 return ContentHelper.GenerateError("File is not an image.");
+
             await using (var m = new MemoryStream())
             {
                 await avatar.CopyToAsync(m);
@@ -250,7 +272,7 @@ namespace AstelliaAPI.Controllers
         [HttpGet("user/pp_graph")]
         public async Task<IActionResult> GetPPGraph([FromQuery(Name = "id")] int id, [FromQuery(Name = "r")] bool relax)
         {
-            var ppGraphs = factory.Get().PPGraphs.Where(x => x.user == id).ToList();
+            var ppGraphs = await factory.Get().PPGraphs.Where(x => x.user == id).ToListAsync();
             return ContentHelper.GenerateOk(ppGraphs);
         }
 
@@ -384,7 +406,7 @@ namespace AstelliaAPI.Controllers
         }
 
         [HttpGet("getIP")]
-        public async Task<IActionResult> GetIP()
+        public IActionResult GetIP()
         {
             var dict = new Dictionary<string, string>();
             string ip = Request.Headers["X-Forwarded-For"];
@@ -463,46 +485,46 @@ namespace AstelliaAPI.Controllers
         {
             IEnumerable<LeaderboardResponse> leaderboard = null;
             if (isRelax)
-                leaderboard = factory.Get()
+                leaderboard = (await factory.Get()
                     .RelaxStats
-                    .ToList()
-                    .Where(x => GetPP(x, mode) > 0)
-                    .OrderByDescending(x => GetPP(x, mode))
+                    .ToListAsync())
+                    .Where(x => UserManager.GetPP(x, mode) > 0)
+                    .OrderByDescending(x => UserManager.GetPP(x, mode))
                     .Skip(page == 1 ? 0 : page * limit)
                     .Take(limit)
                     .Select(x => new LeaderboardResponse
                     {
                         id = x.id,
                         username = x.username,
-                        accuracy = GetAccuracy(x, mode),
+                        accuracy = UserManager.GetAccuracy(x, mode),
                         country = x.country,
                         ss_ranks = 0,
                         s_ranks = 0,
                         a_ranks = 0,
-                        pp = GetPP(x, mode),
-                        playcount = GetPlaycount(x, mode),
-                        level = GetLevel(x, mode)
+                        pp = UserManager.GetPP(x, mode),
+                        playcount = UserManager.GetPlaycount(x, mode),
+                        level = UserManager.GetLevel(x, mode)
                     });
             else
-                leaderboard = factory.Get()
+                leaderboard = (await factory.Get()
                     .UsersStats
-                    .ToList()
-                    .Where(x => GetPP(x, mode) > 0)
-                    .OrderByDescending(x => GetPP(x, mode))
+                    .ToListAsync())
+                    .Where(x => UserManager.GetPP(x, mode) > 0)
+                    .OrderByDescending(x => UserManager.GetPP(x, mode))
                     .Skip(page == 1 ? 0 : page * limit)
                     .Take(limit)
                     .Select(x => new LeaderboardResponse
                     {
                         id = x.id,
                         username = x.username,
-                        accuracy = GetAccuracy(x, mode),
+                        accuracy = UserManager.GetAccuracy(x, mode),
                         country = x.country,
                         ss_ranks = 0,
                         s_ranks = 0,
                         a_ranks = 0,
-                        pp = GetPP(x, mode),
-                        playcount = GetPlaycount(x, mode),
-                        level = GetLevel(x, mode)
+                        pp = UserManager.GetPP(x, mode),
+                        playcount = UserManager.GetPlaycount(x, mode),
+                        level = UserManager.GetLevel(x, mode)
                     });
             Response.ContentType = "application/json";
             return Content(JsonConvert.SerializeObject(leaderboard));
@@ -512,55 +534,105 @@ namespace AstelliaAPI.Controllers
         {
             IEnumerable<ProfileResponse> profile = null;
             if (isRelax)
-                profile = factory.Get()
+                profile = (await factory.Get()
                     .RelaxStats
-                    .ToList()
+                    .ToListAsync())
                     .Where(x => x.id == user)
                     .Select(x => new ProfileResponse
                     {
                         id = x.id,
                         username = x.username,
-                        place = GetRank(x, mode, isRelax),
-                        accuracy = GetAccuracy(x, mode),
+                        place = UserManager.GetRank(x, mode, isRelax),
+                        accuracy = UserManager.GetAccuracy(x, mode),
                         country = x.country,
                         ss_ranks = 0,
                         s_ranks = 0,
                         a_ranks = 0,
-                        pp = GetPP(x, mode),
-                        playcount = GetPlaycount(x, mode),
-                        level = GetLevel(x, mode),
-                        replays_watched = GetReplaysWatched(x, mode),
-                        ranked_score = GetRankedScore(x, mode),
-                        total_score = GetTotalScore(x, mode),
-                        total_hits = GetTotalHits(x, mode)
+                        pp = UserManager.GetPP(x, mode),
+                        playcount = UserManager.GetPlaycount(x, mode),
+                        level = UserManager.GetLevel(x, mode),
+                        replays_watched = UserManager.GetReplaysWatched(x, mode),
+                        ranked_score = UserManager.GetRankedScore(x, mode),
+                        total_score = UserManager.GetTotalScore(x, mode),
+                        total_hits = UserManager.GetTotalHits(x, mode)
                     });
             else
-                profile = factory.Get()
+                profile = (await factory.Get()
                     .UsersStats
-                    .ToList()
+                    .ToListAsync())
                     .Where(x => x.id == user)
                     .Select(x => new ProfileResponse
                     {
                         id = x.id,
                         username = x.username,
-                        place = GetRank(x, mode, isRelax),
-                        accuracy = GetAccuracy(x, mode),
+                        place = UserManager.GetRank(x, mode, isRelax),
+                        accuracy = UserManager.GetAccuracy(x, mode),
                         country = x.country,
                         ss_ranks = 0,
                         s_ranks = 0,
                         a_ranks = 0,
-                        pp = GetPP(x, mode),
-                        playcount = GetPlaycount(x, mode),
-                        level = GetLevel(x, mode),
-                        replays_watched = GetReplaysWatched(x, mode),
-                        ranked_score = GetRankedScore(x, mode),
-                        total_score = GetTotalScore(x, mode),
-                        total_hits = GetTotalHits(x, mode)
+                        pp = UserManager.GetPP(x, mode),
+                        playcount = UserManager.GetPlaycount(x, mode),
+                        level = UserManager.GetLevel(x, mode),
+                        replays_watched = UserManager.GetReplaysWatched(x, mode),
+                        ranked_score = UserManager.GetRankedScore(x, mode),
+                        total_score = UserManager.GetTotalScore(x, mode),
+                        total_hits = UserManager.GetTotalHits(x, mode)
                     });
-
+            
             Response.ContentType = "application/json";
             return Content(JsonConvert.SerializeObject(profile));
         }
+    
+        [HttpGet("user/best")]
+        public async Task<IActionResult> BestUserScores([FromQuery(Name = "u")] int user, [FromQuery(Name = "m")] int mode, [FromQuery(Name = "r")] bool isRelax) 
+        {
+            var bestScores = new List<ProfileScore>();
+            IOrderedEnumerable<IScore> selfScores;
+            if (isRelax) 
+            {
+                selfScores = (await factory.Get().ScoresRelax.Where(x => x.userid == user && x.completed == 3 && x.play_mode == mode)
+                                    .ToListAsync())
+                                    .OrderByDescending(x => x.pp);
+            }
+            else 
+            {
+                selfScores = (await factory.Get().Scores.Where(x => x.userid == user && x.completed == 3 && x.play_mode == mode)
+                                    .ToListAsync())
+                                    .OrderByDescending(x => x.pp);
+            }
+
+            foreach (var selfScore in selfScores) 
+            {
+                var profileBeatmap = await GetBeatmapByMd5(selfScore.beatmap_md5);
+                bestScores.Add(new ProfileScore
+                {
+                    beatmap_id = profileBeatmap.BeatmapId,
+                    mods = selfScore.mods,
+                    accuracy = (float)selfScore.accuracy,
+                    beatmap_title = profileBeatmap.SongTitle,
+                    difficulty = profileBeatmap.Difficulty,
+                    timestamp = TimeHelper.UnixTimestampToDateTime(Convert.ToDouble(selfScore.time)).ToRfc3339String(),
+                    pp = (int)selfScore.pp
+                });
+            }
+            Response.ContentType = "application/json";
+            return Content(JsonConvert.SerializeObject(bestScores));
+        }
+
+        public async Task<ProfileBeatmap> GetBeatmapByMd5(string md5) 
+        {
+            Beatmap beatmap = await factory.Get().Beatmaps.Where(x => x.beatmap_md5 == md5).FirstOrDefaultAsync();
+            var profileBeatmap = new ProfileBeatmap 
+            {
+                BeatmapId = beatmap?.beatmap_id ?? 0,
+                BeatmapSetId = beatmap?.beatmapset_id ?? 0,
+                SongTitle = beatmap?.song_name.Split('[')[0] ?? "Unknown",
+                Difficulty = "[" + beatmap?.song_name.Split('[')[1] ?? "[unknown]"
+            };
+            return profileBeatmap;
+        }
+
         public async Task<bool> CheckToken()
         {
             string token = Request.Headers["Authorization"];
@@ -584,141 +656,6 @@ namespace AstelliaAPI.Controllers
             var responseObject =
                 JsonConvert.DeserializeObject<CaptchaResponse>(await response.Content.ReadAsStringAsync());
             return responseObject.success;
-        }
-
-        public int GetPP(IStats stats, int mode)
-        {
-            return mode switch
-            {
-                0 => stats.pp_std,
-                1 => stats.pp_taiko,
-                2 => stats.pp_ctb,
-                3 => stats.pp_mania,
-                _ => 0
-            };
-        }
-
-        public float GetAccuracy(IStats stats, int mode)
-        {
-            return mode switch
-            {
-                0 => stats.avg_accuracy_std,
-                1 => stats.avg_accuracy_taiko,
-                2 => stats.avg_accuracy_ctb,
-                3 => stats.avg_accuracy_mania,
-                _ => 0
-            };
-        }
-
-        public int GetRank(IStats stats, int mode, bool isRelax)
-        {
-            if (isRelax) 
-            {
-                var rankObject = factory.Get()
-                .RelaxStats
-                .ToList()
-                .OrderByDescending(x => GetPP(x, mode))
-                .GroupBy(x => GetPP(x, mode))
-                .Select((group, i) => new
-                {
-                    Rank = i + 1,
-                    Players = group.OrderByDescending(x => GetPP(x, mode))
-                });
-                foreach (var single in rankObject)
-                {
-                    var player = single.Players.FirstOrDefault(x => x.username == stats.username);
-                    if (!(player is null))
-                        return single.Rank;
-                }
-            }
-            else
-            {
-                var rankObject = factory.Get()
-                .UsersStats
-                .ToList()
-                .OrderByDescending(x => GetPP(x, mode))
-                .GroupBy(x => GetPP(x, mode))
-                .Select((group, i) => new
-                {
-                    Rank = i + 1,
-                    Players = group.OrderByDescending(x => GetPP(x, mode))
-                });
-                foreach (var single in rankObject)
-                {
-                    var player = single.Players.FirstOrDefault(x => x.username == stats.username);
-                    if (!(player is null))
-                        return single.Rank;
-                }
-            }
-            return 0; 
-        }
-
-        public int GetLevel(IStats stats, int mode)
-        {
-            return mode switch
-            {
-                0 => stats.level_std,
-                1 => stats.level_taiko,
-                2 => stats.level_ctb,
-                3 => stats.level_mania,
-                _ => 0
-            };
-        }
-        
-        public int GetPlaycount(IStats stats, int mode)
-        {
-            return mode switch
-            {
-                0 => stats.playcount_std,
-                1 => stats.playcount_taiko,
-                2 => stats.playcount_ctb,
-                3 => stats.playcount_mania,
-                _ => 0
-            };
-        }
-        public int GetTotalHits(IStats stats, int mode)
-        {
-            return mode switch
-            {
-                0 => stats.total_hits_std,
-                1 => stats.total_hits_taiko,
-                2 => stats.total_hits_ctb,
-                3 => stats.total_hits_mania,
-                _ => 0
-            };
-        }
-        public long GetTotalScore(IStats stats, int mode)
-        {
-            return mode switch
-            {
-                0 => stats.total_score_std,
-                1 => stats.total_score_taiko,
-                2 => stats.total_score_ctb,
-                3 => stats.total_score_mania,
-                _ => 0
-            };
-        }
-        public long GetRankedScore(IStats stats, int mode)
-        {
-            return mode switch
-            {
-                0 => stats.ranked_score_std,
-                1 => stats.ranked_score_taiko,
-                2 => stats.ranked_score_ctb,
-                3 => stats.ranked_score_mania,
-                _ => 0
-            };
-        }
-        public int GetReplaysWatched(IStats stats, int mode)
-        {
-            return mode switch
-            {
-                0 => stats.replays_watched_std,
-                1 => stats.replays_watched_taiko,
-                2 => stats.replays_watched_ctb,
-                3 => stats.replays_watched_mania,
-                _ => 0
-            };
         }
     }
 }

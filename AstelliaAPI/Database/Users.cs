@@ -13,13 +13,13 @@ namespace AstelliaAPI.Database
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int id { get; set; }
 
-        [Required] public string username { get; set; }
+        [Required] public string? username { get; set; }
 
-        [Required] public string username_safe { get; set; }
+        [Required] public string? username_safe { get; set; }
 
-        [Required] public string password_md5 { get; set; }
+        [Required] public string? password_md5 { get; set; }
 
-        [Required] public string email { get; set; }
+        [Required] public string? email { get; set; }
 
         [Required] public int register_datetime { get; set; }
 
@@ -45,13 +45,13 @@ namespace AstelliaAPI.Database
         [Required] public int play_style { get; set; } 
         [Required] public int favourite_mode { get; set; }
 
-        [Required] public string custom_badge_icon { get; set; }
+        [Required] public string? custom_badge_icon { get; set; }
 
-        [Required] public string custom_badge_name { get; set; }
+        [Required] public string? custom_badge_name { get; set; }
 
         [Required] public bool show_custom_badge { get; set; }
 
-        [Required] public string username { get; set; }
+        [Required] public string? username { get; set; }
         
         [Required] public int level_std { get; set; }
         [Required] public int level_taiko { get; set; }
@@ -106,7 +106,7 @@ namespace AstelliaAPI.Database
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int id { get; set; }
         [Required] public int favourite_mode { get; set; }
-        [Required] public string username { get; set; }
+        [Required] public string? username { get; set; }
         [Required] public string? country { get; set; }
         [Required] public int level_std { get; set; }
         [Required] public int level_taiko { get; set; }
@@ -178,7 +178,7 @@ namespace AstelliaAPI.Database
 
     public interface IStats
     {
-        [Required] public string username { get; set; }
+        [Required] public string? username { get; set; }
 
         [Required] public int pp_std { get; set; }
 

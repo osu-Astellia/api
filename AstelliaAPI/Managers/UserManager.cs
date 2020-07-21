@@ -63,5 +63,139 @@ namespace AstelliaAPI.Managers
                 _ => "std"
             };
         }
+        public static int GetPP(IStats stats, int mode)
+        {
+            return mode switch
+            {
+                0 => stats.pp_std,
+                1 => stats.pp_taiko,
+                2 => stats.pp_ctb,
+                3 => stats.pp_mania,
+                _ => 0
+            };
+        }
+
+        public static float GetAccuracy(IStats stats, int mode)
+        {
+            return mode switch
+            {
+                0 => stats.avg_accuracy_std,
+                1 => stats.avg_accuracy_taiko,
+                2 => stats.avg_accuracy_ctb,
+                3 => stats.avg_accuracy_mania,
+                _ => 0
+            };
+        }
+
+        public static int GetRank(IStats stats, int mode, bool isRelax)
+        {
+            if (isRelax) 
+            {
+                var rankObject = factory.Get()
+                .RelaxStats
+                .ToList()
+                .OrderByDescending(x => GetPP(x, mode))
+                .GroupBy(x => GetPP(x, mode))
+                .Select((group, i) => new
+                {
+                    Rank = i + 1,
+                    Players = group.OrderByDescending(x => GetPP(x, mode))
+                });
+                foreach (var single in rankObject)
+                {
+                    var player = single.Players.FirstOrDefault(x => x.username == stats.username);
+                    if (!(player is null))
+                        return single.Rank;
+                }
+            }
+            else
+            {
+                var rankObject = factory.Get()
+                .UsersStats
+                .ToList()
+                .OrderByDescending(x => GetPP(x, mode))
+                .GroupBy(x => GetPP(x, mode))
+                .Select((group, i) => new
+                {
+                    Rank = i + 1,
+                    Players = group.OrderByDescending(x => GetPP(x, mode))
+                });
+                foreach (var single in rankObject)
+                {
+                    var player = single.Players.FirstOrDefault(x => x.username == stats.username);
+                    if (!(player is null))
+                        return single.Rank;
+                }
+            }
+            return 0; 
+        }
+
+        public static int GetLevel(IStats stats, int mode)
+        {
+            return mode switch
+            {
+                0 => stats.level_std,
+                1 => stats.level_taiko,
+                2 => stats.level_ctb,
+                3 => stats.level_mania,
+                _ => 0
+            };
+        }
+        
+        public static int GetPlaycount(IStats stats, int mode)
+        {
+            return mode switch
+            {
+                0 => stats.playcount_std,
+                1 => stats.playcount_taiko,
+                2 => stats.playcount_ctb,
+                3 => stats.playcount_mania,
+                _ => 0
+            };
+        }
+        public static int GetTotalHits(IStats stats, int mode)
+        {
+            return mode switch
+            {
+                0 => stats.total_hits_std,
+                1 => stats.total_hits_taiko,
+                2 => stats.total_hits_ctb,
+                3 => stats.total_hits_mania,
+                _ => 0
+            };
+        }
+        public static long GetTotalScore(IStats stats, int mode)
+        {
+            return mode switch
+            {
+                0 => stats.total_score_std,
+                1 => stats.total_score_taiko,
+                2 => stats.total_score_ctb,
+                3 => stats.total_score_mania,
+                _ => 0
+            };
+        }
+        public static long GetRankedScore(IStats stats, int mode)
+        {
+            return mode switch
+            {
+                0 => stats.ranked_score_std,
+                1 => stats.ranked_score_taiko,
+                2 => stats.ranked_score_ctb,
+                3 => stats.ranked_score_mania,
+                _ => 0
+            };
+        }
+        public static int GetReplaysWatched(IStats stats, int mode)
+        {
+            return mode switch
+            {
+                0 => stats.replays_watched_std,
+                1 => stats.replays_watched_taiko,
+                2 => stats.replays_watched_ctb,
+                3 => stats.replays_watched_mania,
+                _ => 0
+            };
+        }
     }
 }

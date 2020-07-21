@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 
+
 namespace AstelliaAPI.Controllers
 {
     public class TopScore
@@ -72,8 +73,8 @@ namespace AstelliaAPI.Controllers
     [Produces("application/json")]
     public class HomeController : Controller
     {
-        private readonly AstelliaDbContextFactory Factory = new AstelliaDbContextFactory();
-        private IScore ScoreObject;
+        private readonly AstelliaDbContextFactory factory = new AstelliaDbContextFactory();
+        private IScore scoreObject;
 
         public string GetRank(IScore score)
         {
@@ -106,23 +107,21 @@ namespace AstelliaAPI.Controllers
             switch (server)
             {
                 case 0:
-                    ScoreObject = Factory.Get().Scores.FromSqlRaw(
+                    scoreObject = await factory.Get().Scores.FromSqlRaw(
                             "SELECT score.id, `beatmap_md5`, `userid`, `score`, `max_combo`, `full_combo`,`mods`,`300_count`,`100_count`,`50_count`,`katus_count`,`gekis_count`,`misses_count`,`time`,`play_mode`,`completed`,`accuracy`,`pp` FROM `scores` AS score INNER JOIN `users` _user ON score.userid = _user.id WHERE _user.privileges & 1 AND _user.privileges & 2 AND score.completed = 3 AND play_mode = 0 ORDER BY score.pp DESC LIMIT 1")
-                        .ToList()
-                        .FirstOrDefault();
+                        .FirstOrDefaultAsync();
                     break;
                 case 1:
-                    ScoreObject = Factory.Get().ScoresRelax.FromSqlRaw(
+                    scoreObject = await factory.Get().ScoresRelax.FromSqlRaw(
                             "SELECT score.id, `beatmap_md5`, `userid`, `score`, `max_combo`, `full_combo`,`mods`,`300_count`,`100_count`,`50_count`,`katus_count`,`gekis_count`,`misses_count`,`time`,`play_mode`,`completed`,`accuracy`,`pp` FROM `scores_relax` AS score INNER JOIN `users` _user ON score.userid = _user.id WHERE _user.privileges & 1 AND _user.privileges & 2 AND score.completed = 3 AND play_mode = 0 ORDER BY score.pp DESC LIMIT 1")
-                        .ToList()
-                        .FirstOrDefault();
+                        .FirstOrDefaultAsync();
                     break;
                 default:
                     Ok("Sorry, it's empty page :)");
                     break;
             }
             var url =
-                $"https://osu.ppy.sh/api/get_beatmaps?k={Config.Get().APIKey}&h={ScoreObject.beatmap_md5}&a=1&m=0";
+                $"https://osu.ppy.sh/api/get_beatmaps?k={Config.Get().APIKey}&h={scoreObject.beatmap_md5}&a=1&m=0";
 
             Console.WriteLine($"URL: {url}");
 
@@ -139,18 +138,18 @@ namespace AstelliaAPI.Controllers
 
             var topScore = new TopScore
             {
-                Player = Factory.Get().Users.Where(x => x.id == ScoreObject.userid).Select(x => x.username)
+                Player = factory.Get().Users.Where(x => x.id == scoreObject.userid).Select(x => x.username)
                     .FirstOrDefault(),
-                UserId = ScoreObject.userid,
-                Performance = ScoreObject.pp,
-                Accuracy = (float) Math.Round(ScoreObject.accuracy, 2),
-                Combo = (short) ScoreObject.max_combo,
-                Rank = GetRank(ScoreObject),
-                SongName = Factory.Get().Beatmaps.Where(x => ScoreObject.beatmap_md5 == x.beatmap_md5)
+                UserId = scoreObject.userid,
+                Performance = scoreObject.pp,
+                Accuracy = (float) Math.Round(scoreObject.accuracy, 2),
+                Combo = (short) scoreObject.max_combo,
+                Rank = GetRank(scoreObject),
+                SongName = factory.Get().Beatmaps.Where(x => scoreObject.beatmap_md5 == x.beatmap_md5)
                     .Select(x => x.song_name).FirstOrDefault(),
                 SongAuthor = (string) songAuthor,
-                Time = TimeHelper.UnixTimestampToDateTime(Convert.ToDouble(ScoreObject.time)).ToRfc3339String(),
-                BeatmapSetId = Factory.Get().Beatmaps.Where(x => ScoreObject.beatmap_md5 == x.beatmap_md5)
+                Time = TimeHelper.UnixTimestampToDateTime(Convert.ToDouble(scoreObject.time)).ToRfc3339String(),
+                BeatmapSetId = factory.Get().Beatmaps.Where(x => scoreObject.beatmap_md5 == x.beatmap_md5)
                     .Select(x => x.beatmapset_id).FirstOrDefault().ToString()
             };
             Console.WriteLine("Done.");

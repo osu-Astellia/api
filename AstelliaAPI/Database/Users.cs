@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -51,7 +51,7 @@ namespace AstelliaAPI.Database
 
         [Required] public bool show_custom_badge { get; set; }
 
-        [Required] public string? username { get; set; }
+        [Required] public string username { get; set; }
         
         [Required] public int level_std { get; set; }
         [Required] public int level_taiko { get; set; }

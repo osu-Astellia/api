@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace AstelliaAPI.Database
@@ -12,7 +12,7 @@ namespace AstelliaAPI.Database
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int id { get; set; }
 
-        [Required] public string beatmap_md5 { get; set; }
+        [Required] public string? beatmap_md5 { get; set; }
 
         [Required] public int userid { get; set; }
 
@@ -34,7 +34,7 @@ namespace AstelliaAPI.Database
 
         [Required] [Column("misses_count")] public int cMiss { get; set; }
 
-        [Required] public string time { get; set; }
+        [Required] public string? time { get; set; }
 
         [Required] public sbyte play_mode { get; set; }
 
@@ -52,7 +52,7 @@ namespace AstelliaAPI.Database
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int id { get; set; }
 
-        [Required] public string beatmap_md5 { get; set; }
+        [Required] public string? beatmap_md5 { get; set; }
 
         [Required] public int userid { get; set; }
 
@@ -74,7 +74,7 @@ namespace AstelliaAPI.Database
 
         [Required] [Column("misses_count")] public int cMiss { get; set; }
 
-        [Required] public string time { get; set; }
+        [Required] public string? time { get; set; }
 
         [Required] public sbyte play_mode { get; set; }
 

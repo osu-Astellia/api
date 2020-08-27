@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using AstelliaAPI.Controllers;
 using AstelliaAPI.Database;
 using Newtonsoft.Json;
 
@@ -50,7 +51,35 @@ namespace AstelliaAPI.Managers
             var user = factory.Get().Users.FirstOrDefault(x => x.id == userid);
             if (user is null) return false;
             return (user.privileges & RipplePrivileges.UserNormal) > 0 &&
-                   !((user.privileges & RipplePrivileges.UserPublic) > 0);
+                   !((user.privileges & RipplePrivileges.UserPublic) > 0) || user.privileges == 0 ;
+        }
+
+        public static double GetK4PP(int userId)
+        {
+            var scores = factory.Get().Scores.Where(x => x.completed == 3 && x.play_mode == 3 && ((Mods)x.mods & Mods.Key4) > 0 && x.userid == userId).OrderByDescending(x => x.pp);
+            double totalPP = 0;
+
+            for (var i = 0; i < 500; i++)
+            {
+                var score = scores.ToList()[i];
+                totalPP += Math.Round(Math.Round(score.pp) * Math.Pow(0.95, i));
+            }
+
+            return totalPP;
+        }
+
+        public static double GetK7PP(int userId)
+        {
+            var scores = factory.Get().Scores.Where(x => x.completed == 3 && x.play_mode == 3 && ((Mods)x.mods & Mods.Key4) > 0 && x.userid == userId).OrderByDescending(x => x.pp);
+            double totalPP = 0;
+
+            for (var i = 0; i < 500; i++)
+            {
+                var score = scores.ToList()[i];
+                totalPP += Math.Round(Math.Round(score.pp) * Math.Pow(0.95, i));
+            }
+
+            return totalPP;
         }
 
         public static string GetMode(int mode)
@@ -63,29 +92,6 @@ namespace AstelliaAPI.Managers
                 _ => "std"
             };
         }
-        public static int GetPP(IStats stats, int mode)
-        {
-            return mode switch
-            {
-                0 => stats.pp_std,
-                1 => stats.pp_taiko,
-                2 => stats.pp_ctb,
-                3 => stats.pp_mania,
-                _ => 0
-            };
-        }
-
-        public static float GetAccuracy(IStats stats, int mode)
-        {
-            return mode switch
-            {
-                0 => stats.avg_accuracy_std,
-                1 => stats.avg_accuracy_taiko,
-                2 => stats.avg_accuracy_ctb,
-                3 => stats.avg_accuracy_mania,
-                _ => 0
-            };
-        }
 
         public static int GetRank(IStats stats, int mode, bool isRelax)
         {
@@ -94,6 +100,7 @@ namespace AstelliaAPI.Managers
                 var rankObject = factory.Get()
                 .RelaxStats
                 .ToList()
+                .Where(x => !Restricted(x.id))
                 .OrderByDescending(x => GetPP(x, mode))
                 .GroupBy(x => GetPP(x, mode))
                 .Select((group, i) => new
@@ -113,6 +120,7 @@ namespace AstelliaAPI.Managers
                 var rankObject = factory.Get()
                 .UsersStats
                 .ToList()
+                .Where(x => !Restricted(x.id))
                 .OrderByDescending(x => GetPP(x, mode))
                 .GroupBy(x => GetPP(x, mode))
                 .Select((group, i) => new
@@ -130,72 +138,104 @@ namespace AstelliaAPI.Managers
             return 0; 
         }
 
-        public static int GetLevel(IStats stats, int mode)
+        public static int GetPP(IStats stats, int mode)
         {
-            return mode switch
-            {
-                0 => stats.level_std,
-                1 => stats.level_taiko,
-                2 => stats.level_ctb,
-                3 => stats.level_mania,
-                _ => 0
-            };
+            if (mode == 0)
+                return stats.pp_std;
+            if (mode == 1)
+                return stats.pp_taiko;
+            if (mode == 2)
+                return stats.pp_ctb;
+            if (mode == 3)
+                return stats.pp_mania; 
+            return 0; 
+        }
+
+        public static float GetAccuracy(IStats stats, int mode)
+        {
+            if (mode == 0)
+                return stats.avg_accuracy_std;
+            if (mode == 1)
+                return stats.avg_accuracy_taiko;
+            if (mode == 2)
+                return stats.avg_accuracy_ctb;
+            if (mode == 3)
+                return stats.avg_accuracy_mania;                                                
+            return 0;
+        }
+
+        public static int GetLevel(IStats stats, int mode)
+        {      
+            if (mode == 0)
+                return stats.level_std;
+            if (mode == 1)
+                return stats.level_taiko;
+            if (mode == 2)
+                return stats.level_ctb;
+            if (mode == 3)
+                return stats.level_mania; 
+            return 0; 
         }
         
         public static int GetPlaycount(IStats stats, int mode)
         {
-            return mode switch
-            {
-                0 => stats.playcount_std,
-                1 => stats.playcount_taiko,
-                2 => stats.playcount_ctb,
-                3 => stats.playcount_mania,
-                _ => 0
-            };
+            if (mode == 0)
+                return stats.playcount_std;
+            if (mode == 1)
+                return stats.playcount_taiko;
+            if (mode == 2)
+                return stats.playcount_ctb;
+            if (mode == 3)
+                return stats.playcount_mania; 
+            return 0; 
         }
         public static int GetTotalHits(IStats stats, int mode)
         {
-            return mode switch
-            {
-                0 => stats.total_hits_std,
-                1 => stats.total_hits_taiko,
-                2 => stats.total_hits_ctb,
-                3 => stats.total_hits_mania,
-                _ => 0
-            };
+            if (mode == 0)
+                return stats.total_hits_std;
+            if (mode == 1)
+                return stats.total_hits_taiko;
+            if (mode == 2)
+                return stats.total_hits_ctb;
+            if (mode == 3)
+                return stats.total_hits_mania; 
+            return 0;
         }
         public static long GetTotalScore(IStats stats, int mode)
         {
-            return mode switch
-            {
-                0 => stats.total_score_std,
-                1 => stats.total_score_taiko,
-                2 => stats.total_score_ctb,
-                3 => stats.total_score_mania,
-                _ => 0
-            };
+            if (mode == 0)
+                return stats.total_score_std;
+            if (mode == 1)
+                return stats.total_score_taiko;
+            if (mode == 2)
+                return stats.total_score_ctb;
+            if (mode == 3)
+                return stats.total_score_mania; 
+            return 0;
         }
         public static long GetRankedScore(IStats stats, int mode)
         {
-            return mode switch
-            {
-                0 => stats.ranked_score_std,
-                1 => stats.ranked_score_taiko,
-                2 => stats.ranked_score_ctb,
-                3 => stats.ranked_score_mania,
-                _ => 0
-            };
+            if (mode == 0)
+                return stats.ranked_score_std;
+            if (mode == 1)
+                return stats.ranked_score_taiko;
+            if (mode == 2)
+                return stats.ranked_score_ctb;
+            if (mode == 3)
+                return stats.ranked_score_mania; 
+            return 0;
         }
         public static int GetReplaysWatched(IStats stats, int mode)
         {
-            return mode switch
-            {
-                0 => stats.replays_watched_std,
-                1 => stats.replays_watched_taiko,
-                2 => stats.replays_watched_ctb,
-                3 => stats.replays_watched_mania,
-                _ => 0
-            };
+            if (mode == 0)
+                return stats.replays_watched_std;
+            if (mode == 1)
+                return stats.replays_watched_taiko;
+            if (mode == 2)
+                return stats.replays_watched_ctb;
+            if (mode == 3)
+                return stats.replays_watched_mania; 
+            return 0;
         }
     }
 }

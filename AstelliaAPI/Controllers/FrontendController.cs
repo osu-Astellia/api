@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -96,15 +96,19 @@ namespace AstelliaAPI.Controllers
         public int ss_ranks { get; set; }
         public int s_ranks { get; set; }
         public int a_ranks { get; set; }
+        public string userpage_content { get; set; }
+        public int account_created_at { get; set; }
         public int replays_watched { get; set; }
         public long ranked_score { get; set; }
         public long total_score { get; set; }
         public int total_hits { get; set; }
         public float accuracy { get; set; }
+        public bool is_friend { get; set; }
     }
 
     public class ProfileScore
     {
+        public int score_id { get; set; }
         public int beatmap_id { get; set; }
         public int mods { get; set; }
         public float accuracy { get; set; }
@@ -112,9 +116,10 @@ namespace AstelliaAPI.Controllers
         public string difficulty { get; set; }
         public string timestamp { get; set; }
         public int pp { get; set; }
+        public string rank { get; set; }
     }
 
-    public class ProfileBeatmap 
+    public class ProfileBeatmap
     {
         public int BeatmapId;
         public int BeatmapSetId;
@@ -178,7 +183,7 @@ namespace AstelliaAPI.Controllers
             string token = Request.Headers["Authorization"];
             if (!await CheckToken()) return ContentHelper.GenerateError("Token not found");
             var dbToken = await factory.Get().Tokens.Where(x => x.token == token).FirstOrDefaultAsync();
-            
+
             using var factoryWrite = factory.GetForWrite();
             var stats = await factoryWrite.Context.UsersStats.Where(x => x.id.ToString() == dbToken.user)
                 .FirstOrDefaultAsync();
@@ -307,6 +312,7 @@ namespace AstelliaAPI.Controllers
         [HttpPost("auth/login")]
         public async Task<IActionResult> UserLogin([FromBody] UserLogin userLoginInfo)
         {
+            var context = new AstelliaDbContext { Database = { AutoTransactionsEnabled = false } };
             var user = await factory.Get().Users
                 .FirstOrDefaultAsync(x => userLoginInfo.login.ToLower().Replace(" ", "_") == x.username_safe);
             if (user is null) return ContentHelper.GenerateError("User not found");
@@ -327,9 +333,8 @@ namespace AstelliaAPI.Controllers
                     user = user.id.ToString(),
                     privileges = 0
                 };
-                var factoryWrite = factory.GetForWrite();
-                await factoryWrite.Context.Tokens.AddAsync(tokenObject);
-                await factoryWrite.Context.SaveChangesAsync();
+                await context.Tokens.AddAsync(tokenObject);
+                await context.SaveChangesAsync();
             }
 
             dbToken = await factory.Get().Tokens.FirstOrDefaultAsync(x => x.user == user.id.ToString());
@@ -338,6 +343,19 @@ namespace AstelliaAPI.Controllers
 
             return Content(JsonConvert.SerializeObject(dict));
         }
+
+        [HttpGet("users/whatid")]
+        public async Task<IActionResult> WhatId([FromQuery(Name = "u")] string name)
+        {
+            var user = await factory.Get().Users
+                .FirstOrDefaultAsync(x => name.ToLower().Replace(" ", "_") == x.username_safe);
+
+            if (!(user is null))
+                return ContentHelper.GenerateOk(user.id);
+            else
+                return ContentHelper.GenerateError("User not found.");
+        }
+
 
         [HttpPost("auth/register")]
         public async Task<IActionResult> UserRegister([FromBody] UserRegister userRegisterInfo)
@@ -356,14 +374,64 @@ namespace AstelliaAPI.Controllers
             var emailCheck = await factory.Get().Users.FirstOrDefaultAsync(x => x.email == userRegisterInfo.email);
             if (!(emailCheck is null)) return ContentHelper.GenerateError("User with that email already exist.");
 
+            var forbiddenNames = "WhiteCat_mrekk_Vaxei_Micca_RyuK_Alumetri_Freddie Benson_Mathi_FlyingTuna_aetrna_FGSky_Rafis_Karthy_Vaxei 2_obtio_badeu_Lifeline_ASecretBox_a_Blue_Spare_Andros_Varvalian_Dereban_Akolibed_Vamhi_Ralidea_azr8_Paraqeet_mcy4_InBefore_uyghti_Umbre_firebat92_fieryrage_Bartek22830_jpeg_SrChispa_MouseEasy_Maxim Bogdan_Parkes_Gasha_okinamo_Vinno_chocomint_Dustice_DanyL_Weabole_CXu_MAREK MARUCHA_filsdelama";
+
+            if (forbiddenNames.Split("_").Contains(userRegisterInfo.login))
+                return ContentHelper.GenerateError("Forbidden name");
+
             if (!await VerifyCaptcha(userRegisterInfo.captcha_key, userRegisterInfo.ip))
                 return ContentHelper.GenerateError("Captcha is not verified.");
 
+            string token = await RegisterUser(userRegisterInfo);
+
+            return ContentHelper.GenerateOk(token);
+        }
+
+        [HttpGet("users/password_reset")]
+        public async Task<IActionResult> PasswordReset([FromQuery(Name = "u")] int user, [FromQuery(Name = "p")] string password)
+        {
+            var context = new AstelliaDbContext { Database = { AutoTransactionsEnabled = false } };
+
+            string token = Request.Headers["Authorization"];
+
+            if (!await CheckToken()) 
+                return ContentHelper.GenerateError("Token not found");
+
+            var dbToken = await factory.Get().Tokens.Where(x => x.token == token).FirstOrDefaultAsync();
+
+            if (dbToken.user == "1121")
+            {
+                string hashPassword;
+                byte[] salt = null;
+                (hashPassword, salt) = PasswordHelper.GeneratePassword(password);
+
+                var player = await context.Users
+                    .FirstOrDefaultAsync(x => x.id == user);
+
+                if (player is null)
+                    return ContentHelper.GenerateError("");
+
+                player.password_md5 = hashPassword;
+                player.ssalt = salt;
+
+                if (player.password_version != 3)
+                    player.password_version = 3;
+
+                await context.SaveChangesAsync();
+
+                return Ok();
+            }
+            return ContentHelper.GenerateOk("You're not allowed to do that.");
+        }
+
+
+        public async Task<string> RegisterUser(UserRegister userRegisterInfo)
+        {
+            var context = new AstelliaDbContext { Database = { AutoTransactionsEnabled = false } };
             string password;
             byte[] salt = null;
 
             (password, salt) = PasswordHelper.GeneratePassword(userRegisterInfo.password);
-            using var factoryWrite = factory.GetForWrite();
             var userObject = new User
             {
                 username = userRegisterInfo.login,
@@ -375,8 +443,8 @@ namespace AstelliaAPI.Controllers
                 ssalt = salt,
                 password_version = 3
             };
-            await factoryWrite.Context.Users.AddAsync(userObject);
-            await factoryWrite.Context.UsersStats.AddAsync(new UserStats
+            await context.Users.AddAsync(userObject);
+            await context.UsersStats.AddAsync(new UserStats
             {
                 username = userRegisterInfo.login,
                 custom_badge_icon = "",
@@ -387,22 +455,24 @@ namespace AstelliaAPI.Controllers
                 play_style = 0,
                 country = "XX"
             });
-            await factoryWrite.Context.RelaxStats.AddAsync(new RelaxStats
+            await context.RelaxStats.AddAsync(new RelaxStats
             {
                 username = userRegisterInfo.login,
                 favourite_mode = 0,
                 country = "XX"
             });
-            await factoryWrite.Context.SaveChangesAsync();
+            await context.SaveChangesAsync();
+            var tokenString = Guid.NewGuid().ToString();
             var tokenObject = new Token
             {
-                token = Guid.NewGuid().ToString(),
+                token = tokenString,
                 user = userObject.id.ToString(),
                 privileges = 0
             };
-            await factoryWrite.Context.Tokens.AddAsync(tokenObject);
-            await factoryWrite.Context.SaveChangesAsync();
-            return ContentHelper.GenerateOk(tokenObject.token);
+            await context.Tokens.AddAsync(tokenObject);
+            await context.SaveChangesAsync();
+
+            return tokenString;
         }
 
         [HttpGet("getIP")]
@@ -450,11 +520,10 @@ namespace AstelliaAPI.Controllers
         }
 
         [HttpPost("merge")]
-        public async Task<IActionResult>
-            PasswordMerge([FromBody] PasswordMergeRequest passwordMergeRequest) // temporary
+        public async Task<IActionResult> PasswordMerge([FromBody] PasswordMergeRequest passwordMergeRequest) // temporary
         {
-            using var factoryWrite = factory.GetForWrite();
-            var user = await factoryWrite.Context.Users
+            var context = new AstelliaDbContext { Database = { AutoTransactionsEnabled = false } };
+            var user = await context.Users
                 .Where(x => x.username_safe == passwordMergeRequest.username.ToLower().Replace(" ", "_"))
                 .FirstOrDefaultAsync();
             if (user is null) return ContentHelper.GenerateError("User not found");
@@ -463,6 +532,7 @@ namespace AstelliaAPI.Controllers
                 return ContentHelper.GenerateError("Account is already on newest password algorithm");
 
             byte[] salt = null;
+
             var validPassword =
                 BCrypt.Net.BCrypt.Verify(MD5Helper.GetMd5(passwordMergeRequest.password), user.password_md5);
 
@@ -485,10 +555,11 @@ namespace AstelliaAPI.Controllers
         {
             IEnumerable<LeaderboardResponse> leaderboard = null;
             if (isRelax)
+            {
                 leaderboard = (await factory.Get()
                     .RelaxStats
                     .ToListAsync())
-                    .Where(x => UserManager.GetPP(x, mode) > 0)
+                    .Where(x => UserManager.GetPP(x, mode) > 0 && !UserManager.Restricted(x.id))
                     .OrderByDescending(x => UserManager.GetPP(x, mode))
                     .Skip(page == 1 ? 0 : page * limit)
                     .Take(limit)
@@ -505,11 +576,13 @@ namespace AstelliaAPI.Controllers
                         playcount = UserManager.GetPlaycount(x, mode),
                         level = UserManager.GetLevel(x, mode)
                     });
+            }
             else
+            {
                 leaderboard = (await factory.Get()
                     .UsersStats
                     .ToListAsync())
-                    .Where(x => UserManager.GetPP(x, mode) > 0)
+                    .Where(x => UserManager.GetPP(x, mode) > 0 && !UserManager.Restricted(x.id))
                     .OrderByDescending(x => UserManager.GetPP(x, mode))
                     .Skip(page == 1 ? 0 : page * limit)
                     .Take(limit)
@@ -526,17 +599,47 @@ namespace AstelliaAPI.Controllers
                         playcount = UserManager.GetPlaycount(x, mode),
                         level = UserManager.GetLevel(x, mode)
                     });
+            }
             Response.ContentType = "application/json";
             return Content(JsonConvert.SerializeObject(leaderboard));
+        }
+        [HttpPost("users/{id:int}/friend")]
+        public async Task<IActionResult> AddFriend(int id)
+        {
+            var context = new AstelliaDbContext { Database = { AutoTransactionsEnabled = false } };
+            string token = Request.Headers["Authorization"];
+            if (!await CheckToken()) return ContentHelper.GenerateError("Token not found");
+            var dbToken = await factory.Get().Tokens.Where(x => x.token == token).FirstOrDefaultAsync();
+            var user = await factory.Get().Users.Where(x => x.id.ToString() == dbToken.user).FirstOrDefaultAsync();
+
+            await context.Friends.AddAsync(new Friend 
+            {
+                user1 = user.id,
+                user2 = id
+            });
+            await context.SaveChangesAsync();
+            return ContentHelper.GenerateOk("ok");
         }
         [HttpGet("profile_info")]
         public async Task<IActionResult> ProfileInfo([FromQuery(Name = "u")] int user, [FromQuery(Name = "m")] int mode, [FromQuery(Name = "r")] bool isRelax)
         {
+            string token = Request.Headers["Authorization"];
+            var tokenProvided = !(token is null);
+            User _user = null;
+            if (tokenProvided)
+            {
+                if (!await CheckToken())
+                    return ContentHelper.GenerateError("Token not found");
+
+                var dbToken = await factory.Get().Tokens.Where(x => x.token == token).FirstOrDefaultAsync();
+                _user = await factory.Get().Users.Where(x => x.id.ToString() == dbToken.user).FirstOrDefaultAsync();
+            }
+
             IEnumerable<ProfileResponse> profile = null;
             if (isRelax)
-                profile = (await factory.Get()
+            {
+                profile = factory.Get()
                     .RelaxStats
-                    .ToListAsync())
                     .Where(x => x.id == user)
                     .Select(x => new ProfileResponse
                     {
@@ -548,18 +651,23 @@ namespace AstelliaAPI.Controllers
                         ss_ranks = 0,
                         s_ranks = 0,
                         a_ranks = 0,
+                        userpage_content = factory.Get().UsersStats.Where(x => x.id == user).FirstOrDefault().userpage_content,
+                        account_created_at = factory.Get().Users.Where(x => x.id == user).FirstOrDefault().register_datetime,
                         pp = UserManager.GetPP(x, mode),
                         playcount = UserManager.GetPlaycount(x, mode),
                         level = UserManager.GetLevel(x, mode),
                         replays_watched = UserManager.GetReplaysWatched(x, mode),
                         ranked_score = UserManager.GetRankedScore(x, mode),
                         total_score = UserManager.GetTotalScore(x, mode),
-                        total_hits = UserManager.GetTotalHits(x, mode)
+                        total_hits = UserManager.GetTotalHits(x, mode),
+                        is_friend = _user == default ? false : factory.Get().Friends.Where(x => x.user1 == _user.id && x.user2 == x.id).FirstOrDefault() == default ? false : true
                     });
+            }
+
             else
-                profile = (await factory.Get()
+            {
+                profile = factory.Get()
                     .UsersStats
-                    .ToListAsync())
                     .Where(x => x.id == user)
                     .Select(x => new ProfileResponse
                     {
@@ -571,59 +679,64 @@ namespace AstelliaAPI.Controllers
                         ss_ranks = 0,
                         s_ranks = 0,
                         a_ranks = 0,
+                        userpage_content = factory.Get().UsersStats.Where(x => x.id == user).FirstOrDefault().userpage_content,
+                        account_created_at = factory.Get().Users.Where(x => x.id == user).FirstOrDefault().register_datetime,
                         pp = UserManager.GetPP(x, mode),
                         playcount = UserManager.GetPlaycount(x, mode),
                         level = UserManager.GetLevel(x, mode),
                         replays_watched = UserManager.GetReplaysWatched(x, mode),
                         ranked_score = UserManager.GetRankedScore(x, mode),
                         total_score = UserManager.GetTotalScore(x, mode),
-                        total_hits = UserManager.GetTotalHits(x, mode)
+                        total_hits = UserManager.GetTotalHits(x, mode),
+                        is_friend = _user == default ? false : factory.Get().Friends.Where(x => x.user1 == _user.id && x.user2 == x.id).FirstOrDefault() == default ? false : true
                     });
-            
-            Response.ContentType = "application/json";
+            }
+
             return Content(JsonConvert.SerializeObject(profile));
         }
-    
+
         [HttpGet("user/best")]
-        public async Task<IActionResult> BestUserScores([FromQuery(Name = "u")] int user, [FromQuery(Name = "m")] int mode, [FromQuery(Name = "r")] bool isRelax) 
+        public async Task<IActionResult> BestUserScores([FromQuery(Name = "u")] int user, [FromQuery(Name = "m")] int mode, [FromQuery(Name = "r")] bool isRelax)
         {
-            var bestScores = new List<ProfileScore>();
+            var bestScores = new HashSet<ProfileScore>();
             IOrderedEnumerable<IScore> selfScores;
-            if (isRelax) 
+            if (isRelax)
             {
                 selfScores = (await factory.Get().ScoresRelax.Where(x => x.userid == user && x.completed == 3 && x.play_mode == mode)
-                                    .ToListAsync())
+                                    .ToArrayAsync())
                                     .OrderByDescending(x => x.pp);
             }
-            else 
+            else
             {
                 selfScores = (await factory.Get().Scores.Where(x => x.userid == user && x.completed == 3 && x.play_mode == mode)
-                                    .ToListAsync())
+                                    .ToArrayAsync())
                                     .OrderByDescending(x => x.pp);
             }
 
-            foreach (var selfScore in selfScores) 
+            foreach (var selfScore in selfScores)
             {
                 var profileBeatmap = await GetBeatmapByMd5(selfScore.beatmap_md5);
                 bestScores.Add(new ProfileScore
                 {
+                    score_id = selfScore.id,
                     beatmap_id = profileBeatmap.BeatmapId,
                     mods = selfScore.mods,
                     accuracy = (float)selfScore.accuracy,
                     beatmap_title = profileBeatmap.SongTitle,
                     difficulty = profileBeatmap.Difficulty,
                     timestamp = TimeHelper.UnixTimestampToDateTime(Convert.ToDouble(selfScore.time)).ToRfc3339String(),
-                    pp = (int)selfScore.pp
+                    pp = (int)selfScore.pp,
+                    rank = GetRank(selfScore)
                 });
             }
             Response.ContentType = "application/json";
             return Content(JsonConvert.SerializeObject(bestScores));
         }
 
-        public async Task<ProfileBeatmap> GetBeatmapByMd5(string md5) 
+        public async Task<ProfileBeatmap> GetBeatmapByMd5(string md5)
         {
             Beatmap beatmap = await factory.Get().Beatmaps.Where(x => x.beatmap_md5 == md5).FirstOrDefaultAsync();
-            var profileBeatmap = new ProfileBeatmap 
+            var profileBeatmap = new ProfileBeatmap
             {
                 BeatmapId = beatmap?.beatmap_id ?? 0,
                 BeatmapSetId = beatmap?.beatmapset_id ?? 0,
@@ -637,6 +750,30 @@ namespace AstelliaAPI.Controllers
         {
             string token = Request.Headers["Authorization"];
             return token != null && await factory.Get().Tokens.Where(x => x.token == token).FirstOrDefaultAsync() != null;
+        }
+
+        public string GetRank(IScore score)
+        {
+            var tHits = score.c50 + score.c100 + score.c300 + score.cMiss;
+            var ratio300 = (float)score.c300 / tHits;
+            var ratio50 = (float)score.c50 / tHits;
+            if (ratio300 == 1)
+                return ((Mods)score.mods & Mods.Hidden) > 0 ||
+                       ((Mods)score.mods & Mods.Flashlight) > 0
+                    ? "SSHD"
+                    : "SS";
+            if (ratio300 > 0.9 && ratio50 <= 0.01 && score.cMiss == 0)
+                return ((Mods)score.mods & Mods.Hidden) > 0 ||
+                       ((Mods)score.mods & Mods.Flashlight) > 0
+                    ? "SHD"
+                    : "S";
+            if (ratio300 > 0.8 && score.cMiss == 0 || ratio300 > 0.9)
+                return "A";
+            if (ratio300 > 0.7 && score.cMiss == 0 || ratio300 > 0.8)
+                return "B";
+            if (ratio300 > 0.6)
+                return "C";
+            return "D";
         }
 
         public async Task<bool> VerifyCaptcha(string key, string userIp)

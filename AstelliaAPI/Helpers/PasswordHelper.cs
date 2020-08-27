@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -39,10 +40,7 @@ namespace AstelliaAPI.Helpers
             return byteArray;
         }
 
-        public static byte[] generate_salt()
-        {
-            return PseudoSecureBytes(new Random().Next(90, 100));
-        }
+        public static byte[] generate_salt() => PseudoSecureBytes(new Random().Next(90, 100));
 
         public static (string password, byte[] salt) generate_hash(string password, int rounds = 20)
         {
@@ -66,14 +64,17 @@ namespace AstelliaAPI.Helpers
     {
         public static bool IsValidPassword(string dbPassword, string rawPassword, byte[] salt, bool is_bancho)
         {
-            var md5Password = string.Empty;
+            string md5Password = string.Empty;
             if (!is_bancho)
+            {
                 md5Password = MD5Helper.GetMd5(rawPassword);
+            } 
             else
+            {
                 md5Password = rawPassword;
+            }
             return SCrypt.validate_password(md5Password, dbPassword, salt);
         }
-
         public static (string password, byte[] salt) GeneratePassword(string password)
         {
             var md5Password = MD5Helper.GetMd5(password);
@@ -91,11 +92,7 @@ namespace AstelliaAPI.Helpers
             }
         }
 
-        public static string GetMd5(string data)
-        {
-            return ToHex(GetMd5(Encoding.UTF8.GetBytes(data)));
-        }
-
+        public static string GetMd5(string data) => ToHex(GetMd5(Encoding.UTF8.GetBytes(data)));
         public static string ToHex(byte[] data)
         {
             var hex = new StringBuilder(data.Length * 2);
@@ -103,7 +100,6 @@ namespace AstelliaAPI.Helpers
                 hex.AppendFormat("{0:x2}", d);
             return hex.ToString();
         }
-
         public static string Compute(string filename)
         {
             using (var md5 = MD5.Create())

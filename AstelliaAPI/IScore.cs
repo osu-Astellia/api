@@ -1,4 +1,9 @@
-﻿namespace AstelliaAPI
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace AstelliaAPI
 {
     public interface IScore
     {
@@ -21,7 +26,7 @@
 
         public int cKatu { get; set; }
 
-
+ 
         public int cMiss { get; set; }
 
         public string time { get; set; }

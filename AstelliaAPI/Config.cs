@@ -1,24 +1,28 @@
-﻿using System.IO;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace AstelliaAPI
 {
     public class ConfigScheme
     {
+        public string Database;
+        public string Username;
+        public string Password;
         public string APIKey;
         public string AvatarPath;
-        public string Database;
-        public string Password;
-        public string RecaptchaPrivate;
         public string UpdaterPath;
-        public string Username;
+        public string RecaptchaPrivate;
     }
-
-    public static class Config
+    public class Config
     {
         public static ConfigScheme Get()
         {
             if (!File.Exists("config.json"))
+            {
                 File.WriteAllText("config.json", JsonConvert.SerializeObject(new ConfigScheme
                 {
                     Database = "ripple",
@@ -29,6 +33,7 @@ namespace AstelliaAPI
                     APIKey = "",
                     RecaptchaPrivate = ""
                 }));
+            }
             return JsonConvert.DeserializeObject<ConfigScheme>(File.ReadAllText("config.json"));
         }
     }

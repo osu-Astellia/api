@@ -20,6 +20,7 @@ namespace AstelliaAPI.Database
         public DbSet<ScoreRelax> ScoresRelax { get; set; }
         public DbSet<Token> Tokens { get; set; }
         public DbSet<Beatmap> Beatmaps { get; set; }
+        public DbSet<Friend> Friends { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

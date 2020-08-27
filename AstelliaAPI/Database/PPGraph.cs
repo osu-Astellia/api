@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace AstelliaAPI.Database
@@ -8,7 +9,7 @@ namespace AstelliaAPI.Database
     {
         [Required] public int user { get; set; }
 
-        [Required] public string time { get; set; }
+        [Required] public DateTime time { get; set; }
 
         [Required] public int pp { get; set; }
 

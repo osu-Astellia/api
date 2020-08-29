@@ -365,6 +365,9 @@ namespace AstelliaAPI.Controllers
 
             if (!(user is null)) return ContentHelper.GenerateError("User with this login already exist.");
 
+            if (!Regex.IsMatch(userRegisterInfo.login, @"^[\w ]+$"))
+                return ContentHelper.GenerateError("Login doesn't match format.");
+
             if (userRegisterInfo.password.Length < 4 || userRegisterInfo.password.Length > 25)
                 return ContentHelper.GenerateError("Password too long or too short.");
 

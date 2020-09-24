@@ -21,6 +21,10 @@ namespace AstelliaAPI.Database
         public DbSet<Token> Tokens { get; set; }
         public DbSet<Beatmap> Beatmaps { get; set; }
         public DbSet<Friend> Friends { get; set; }
+        public DbSet<Supporters> Supporters { get; set; }
+
+        public DbSet<UsernameHistory> UsernameHistories { get; set; }
+        public DbSet<Bills> Bills { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

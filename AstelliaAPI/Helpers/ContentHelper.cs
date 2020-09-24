@@ -19,6 +19,28 @@ namespace AstelliaAPI.Helpers
             result.Content = JsonConvert.SerializeObject(dict);
             return result;
         }
+
+        public static ContentResult NoTokenError(){
+            var dict = new Dictionary<string, object>();
+            var result = new ContentResult();
+            dict["message"] = "Unauthorized";
+            result.ContentType = "application/json";
+            result.StatusCode = 401;
+            result.Content = JsonConvert.SerializeObject(dict);
+            return result;
+        }
+
+        public static ContentResult Message(object message, int code = 200){
+            var dict = new Dictionary<string, object>();
+            var result = new ContentResult();
+            dict["message"] = message;
+            result.ContentType = "application/json";
+            result.StatusCode = code;
+            result.Content = JsonConvert.SerializeObject(dict);
+            return result;
+        }
+
+
         public static ContentResult GenerateErrorCustom<T>(T message)
         {
             var result = new ContentResult();

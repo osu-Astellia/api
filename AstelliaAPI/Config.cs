@@ -16,6 +16,12 @@ namespace AstelliaAPI
         public string AvatarPath;
         public string UpdaterPath;
         public string RecaptchaPrivate;
+
+        public string QiwiPublicKey;
+
+        public string QiwiPrivateKey;
+
+        public int DonorCost;
     }
     public class Config
     {
@@ -31,7 +37,10 @@ namespace AstelliaAPI
                     AvatarPath = "",
                     UpdaterPath = "",
                     APIKey = "",
-                    RecaptchaPrivate = ""
+                    RecaptchaPrivate = "",
+                    QiwiPublicKey = "",
+                    QiwiPrivateKey = "",
+                    DonorCost = 190
                 }));
             }
             return JsonConvert.DeserializeObject<ConfigScheme>(File.ReadAllText("config.json"));

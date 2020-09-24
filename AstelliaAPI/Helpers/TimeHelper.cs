@@ -21,7 +21,7 @@ namespace AstelliaAPI.Helpers
         }
         public static int CurrentUnixTimestamp()
         {
-            return (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+            return (Int32)(DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
         }
     }
 }

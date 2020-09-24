@@ -6,6 +6,61 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace AstelliaAPI.Database
 {
+
+
+    [Table("username_history")]
+    public class UsernameHistory
+    {
+        [Required]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int id { get; set; }
+
+
+        public int userid { get; set; }
+
+        public string? username { get; set; }
+
+        public int? changed_datetime { get; set; }
+    }
+
+
+    [Table("bills")]
+
+    public class Bills 
+    {
+        [Required]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int id { get; set; }
+
+
+        [Required] public string? phone { get; set; }
+
+
+        [Required] public string? email { get; set; }
+
+        [Required] public int lifetime { get; set; }
+        
+        [Required] public int userid { get; set; }
+
+        [Required] public string? guid { get; set; }
+
+        [Required] public string? state { get; set; }
+    }
+
+    [Table("supporters")]
+    public class Supporters 
+    {
+
+        [Required]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int id { get; set; }
+
+        [Required] public int userid { get; set; }
+
+        [Required] public long expires_at { get; set; }
+    }
+
+
     [Table("users")]
     public class User
     {
@@ -30,6 +85,8 @@ namespace AstelliaAPI.Database
         [Required] public RipplePrivileges privileges { get; set; }
 
         [Required] public bool nc_instead_dt { get; set; }
+
+        [Required] public int supporter_expires_at { get; set; }
     }
 
     [Table("users_stats")]
@@ -52,7 +109,8 @@ namespace AstelliaAPI.Database
         [Required] public bool show_custom_badge { get; set; }
 
         [Required] public string username { get; set; }
-        
+        [Column("4kpp")] [Required] public int FourKeyPP { get; set; }
+        [Column("7kpp")] [Required] public int SevenKeyPP { get; set; }
         [Required] public int level_std { get; set; }
         [Required] public int level_taiko { get; set; }
         [Required] public int level_ctb { get; set; }
@@ -97,6 +155,8 @@ namespace AstelliaAPI.Database
         [Required] public int pp_ctb { get; set; }
 
         [Required] public int pp_mania { get; set; }
+
+        [Required] public int verification_type { get; set; }
     }
 
     [Table("rx_stats")]
@@ -120,7 +180,8 @@ namespace AstelliaAPI.Database
         [Required] public long total_score_taiko { get; set; }
         [Required] public long total_score_ctb { get; set; }
         [Required] public long total_score_mania { get; set; }
-
+        [NotMapped] public int FourKeyPP { get; set; }
+        [NotMapped] public int SevenKeyPP { get; set; }
         [Required] public int total_hits_std { get; set; }
         [Required] public int total_hits_taiko { get; set; }
         [Required] public int total_hits_ctb { get; set; }
@@ -144,6 +205,8 @@ namespace AstelliaAPI.Database
         [Required] public int pp_taiko { get; set; }
         [Required] public int pp_ctb { get; set; }
         [Required] public int pp_mania { get; set; }
+
+        [Required] public int verification_type { get; set; }
     }
 
     [Flags]
@@ -193,7 +256,8 @@ namespace AstelliaAPI.Database
         [Required] public int level_ctb { get; set; }
         [Required] public int level_mania { get; set; }
 
-
+        [Column("4kpp")] [Required] public int FourKeyPP { get; set; }
+        [Column("7kpp")] [Required] public int SevenKeyPP { get; set; }
         [Required] public long ranked_score_std { get; set; }
         [Required] public long ranked_score_taiko { get; set; }
         [Required] public long ranked_score_ctb { get; set; }
